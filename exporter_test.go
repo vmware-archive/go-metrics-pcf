@@ -29,6 +29,14 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			},
 		})))
 	})
+
+	// TODO:
+	//   gauge
+	//   gauge float64
+	//   meter
+	//   histogram
+	//   timer
+	//   ewma
 })
 
 type fakeTransporter struct {

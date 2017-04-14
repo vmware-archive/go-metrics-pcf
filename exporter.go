@@ -24,6 +24,7 @@ type Options struct {
 }
 
 func Pcf(registry metrics.Registry) {
+	// TODO: get values from environment
 	metricForwarderUrl := "http://example.com/v1/"
 	apiToken := "test-token"
 	instanceId := "d61e5f10-16a4-47fc-bdf9-f8a5c097cf7b"
@@ -71,6 +72,7 @@ func (e *exporter) exportMetrics(registry metrics.Registry) error {
 }
 
 func (e *exporter) assembleDataPoints(registry metrics.Registry) []*dataPoint {
+	// TODO convert `go-metrics metrics` to `pcf metrics`
 	return make([]*dataPoint, 0)
 }
 
@@ -86,6 +88,7 @@ func newHttpTransporter(url string, token string) *httpTransporter {
 	}
 }
 
+// TODO: post to url with authorization header
 func (h *httpTransporter) Send([]*dataPoint) error {
 	return nil
 }
