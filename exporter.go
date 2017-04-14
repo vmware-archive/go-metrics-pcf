@@ -7,12 +7,19 @@ import (
 )
 
 type dataPoint struct {
-	metricType string
-	value      float64
+	Name      string  `json:"name"`
+	Type      string  `json:"type"`
+	Value     float64 `json:"value"`
+	Timestamp int64   `json:"timestamp"`
+	Unit      string  `json:"unit"`
 }
 
 type transporter interface {
-	Send([]*dataPoint) error
+	send([]*dataPoint) error
+}
+
+type timeHelper interface {
+	currentTimeInMillis() int64
 }
 
 type Options struct {
@@ -25,10 +32,19 @@ type Options struct {
 
 func Pcf(registry metrics.Registry) {
 	// TODO: get values from environment
-	metricForwarderUrl := "http://example.com/v1/"
-	apiToken := "test-token"
-	instanceId := "d61e5f10-16a4-47fc-bdf9-f8a5c097cf7b"
-	instanceIndex := 1
+	metricForwarderUrl, apiToken, err := getCredentials()
+	if err != nil {
+		log.Printf("Could not get credentials: %s", err.Error())
+		return
+	}
+
+	instanceIndex, err := getInstanceIndex()
+	if err != nil {
+		log.Printf("Could not get instance index: %s", err.Error())
+		return
+	}
+
+	instanceId := getInstanceGuid()
 
 	ExportWithOptions(registry, &Options{
 		url:           metricForwarderUrl,
@@ -42,7 +58,7 @@ func Pcf(registry metrics.Registry) {
 func ExportWithOptions(registry metrics.Registry, options *Options) {
 	timer := time.NewTimer(options.frequency)
 	transport := newHttpTransporter(options.url, options.token)
-	exporter := newExporter(transport)
+	exporter := newExporter(transport, &realTimeHelper{})
 
 	for {
 		<-timer.C
@@ -57,38 +73,42 @@ func ExportWithOptions(registry metrics.Registry, options *Options) {
 
 type exporter struct {
 	transport transporter
+	timeHelper timeHelper
 }
 
-func newExporter(transport transporter) *exporter {
+func newExporter(transport transporter, timeHelper timeHelper) *exporter {
 	return &exporter{
 		transport: transport,
+		timeHelper: timeHelper,
 	}
 }
 
 func (e *exporter) exportMetrics(registry metrics.Registry) error {
 	dataPoints := e.assembleDataPoints(registry)
 
-	return e.transport.Send(dataPoints)
+	return e.transport.send(dataPoints)
 }
 
 func (e *exporter) assembleDataPoints(registry metrics.Registry) []*dataPoint {
-	// TODO convert `go-metrics metrics` to `pcf metrics`
-	return make([]*dataPoint, 0)
-}
+	data := make([]*dataPoint, 0)
+	currentTime := e.timeHelper.currentTimeInMillis()
 
-type httpTransporter struct {
-	url   string
-	token string
-}
+	registry.Each(func(name string, metric interface{}) {
+		switch m := metric.(type) {
+		case metrics.Counter:
+			data = append(data, convertCounter(m.Snapshot(), name, currentTime))
+		case metrics.Gauge:
+			data = append(data, convertGauge(m.Snapshot(), name, currentTime))
+		case metrics.GaugeFloat64:
+			data = append(data, convertGaugeFloat64(m.Snapshot(), name, currentTime))
+		case metrics.Meter:
+			data = append(data, convertMeter(m.Snapshot(), name, currentTime)...)
+		case metrics.Timer:
+			data = append(data, convertTimer(m.Snapshot(), name, currentTime)...)
+		case metrics.Histogram:
+			data = append(data, convertHistogram(m.Snapshot(), name, currentTime)...)
+		}
+	})
 
-func newHttpTransporter(url string, token string) *httpTransporter {
-	return &httpTransporter{
-		url:   url,
-		token: token,
-	}
-}
-
-// TODO: post to url with authorization header
-func (h *httpTransporter) Send([]*dataPoint) error {
-	return nil
+	return data
 }
