@@ -1,8 +1,10 @@
 package pcf
 
 import (
+	"fmt"
 	"github.com/rcrowley/go-metrics"
 	"log"
+	"net/http"
 	"time"
 )
 
@@ -28,15 +30,21 @@ type Options struct {
 	instanceIndex int
 	token         string
 	url           string
+	appGuid       string
 }
 
 func Pcf(registry metrics.Registry) {
-	// TODO: get values from environment
 	metricForwarderUrl, apiToken, err := getCredentials()
 	if err != nil {
 		log.Printf("Could not get credentials: %s", err.Error())
 		return
 	}
+
+  appGuid, err := getAppGuid()
+  if err != nil {
+    log.Printf("Could not get app guid: %s", err.Error())
+    return
+  }
 
 	instanceIndex, err := getInstanceIndex()
 	if err != nil {
@@ -44,20 +52,21 @@ func Pcf(registry metrics.Registry) {
 		return
 	}
 
-	instanceId := getInstanceGuid()
-
 	ExportWithOptions(registry, &Options{
 		url:           metricForwarderUrl,
 		token:         apiToken,
 		frequency:     time.Minute,
-		instanceId:    instanceId,
+		appGuid:       appGuid,
+		instanceId:    getInstanceGuid(),
 		instanceIndex: instanceIndex,
 	})
 }
 
 func ExportWithOptions(registry metrics.Registry, options *Options) {
+	url := fmt.Sprintf("%s/apps/%s/instances/%s/%d", options.url, options.appGuid, options.instanceId, options.instanceIndex)
+
 	timer := time.NewTimer(options.frequency)
-	transport := newHttpTransporter(options.url, options.token)
+	transport := newHttpTransporter(http.DefaultClient, url, options.token)
 	exporter := newExporter(transport, &realTimeHelper{})
 
 	for {
@@ -72,13 +81,13 @@ func ExportWithOptions(registry metrics.Registry, options *Options) {
 }
 
 type exporter struct {
-	transport transporter
+	transport  transporter
 	timeHelper timeHelper
 }
 
 func newExporter(transport transporter, timeHelper timeHelper) *exporter {
 	return &exporter{
-		transport: transport,
+		transport:  transport,
 		timeHelper: timeHelper,
 	}
 }

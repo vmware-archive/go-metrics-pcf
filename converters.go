@@ -123,11 +123,11 @@ func convertHistogram(histogram metrics.Histogram, name string, currentTime int6
 		},
 	}
 
-	percentiles := []float64{95, 99, 99.9, 99.99, 99.999}
+	percentiles := []float64{75, 95, 98, 99, 99.9}
 	for i, v := range histogram.Percentiles(percentiles) {
-		percentileName := strings.Replace(strconv.FormatFloat(percentiles[i], 'f', -1, 64), ".", "-", -1)
+		percentileName := strings.Replace(strconv.FormatFloat(percentiles[i], 'f', -1, 64), ".", "", -1)
 		points = append(points, &dataPoint{
-			Name:      namer(name, fmt.Sprintf("%spercentile", percentileName)),
+			Name:      namer(name, fmt.Sprintf("%sthPercentile", percentileName)),
 			Value:     float64(v),
 			Timestamp: currentTime,
 			Type:      "gauge",
@@ -201,11 +201,11 @@ func convertTimer(timer metrics.Timer, name string, currentTime int64) []*dataPo
 		},
 	}
 
-	percentiles := []float64{95, 99, 99.9, 99.99, 99.999}
+	percentiles := []float64{75, 95, 98, 99, 99.9}
 	for i, v := range timer.Percentiles(percentiles) {
-		percentileName := strings.Replace(strconv.FormatFloat(percentiles[i], 'f', -1, 64), ".", "-", -1)
+		percentileName := strings.Replace(strconv.FormatFloat(percentiles[i], 'f', -1, 64), ".", "", -1)
 		points = append(points, &dataPoint{
-			Name:      namer(name, "duration", fmt.Sprintf("%spercentile", percentileName)),
+			Name:      namer(name, "duration", fmt.Sprintf("%sthPercentile", percentileName)),
 			Value:     float64(v),
 			Timestamp: currentTime,
 			Type:      "gauge",

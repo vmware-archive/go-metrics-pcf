@@ -238,35 +238,35 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-histogram.95percentile",
+				Name:      "test-histogram.75thPercentile",
 				Type:      "gauge",
 				Value:     8,
 				Timestamp: 123,
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-histogram.99percentile",
+				Name:      "test-histogram.95thPercentile",
 				Type:      "gauge",
 				Value:     9,
 				Timestamp: 123,
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-histogram.99-9percentile",
+				Name:      "test-histogram.98thPercentile",
 				Type:      "gauge",
 				Value:     10,
 				Timestamp: 123,
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-histogram.99-99percentile",
+				Name:      "test-histogram.99thPercentile",
 				Type:      "gauge",
 				Value:     11,
 				Timestamp: 123,
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-histogram.99-999percentile",
+				Name:      "test-histogram.999thPercentile",
 				Type:      "gauge",
 				Value:     12,
 				Timestamp: 123,
@@ -274,6 +274,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			},
 		)))
 
+		Expect(fakeHistogram.PercentilesArgsForCall(0)).To(Equal([]float64{75, 95, 98, 99, 99.9}))
 	})
 
 	It("exports timer metrics", func() {
@@ -371,35 +372,35 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-timer.duration.95percentile",
+				Name:      "test-timer.duration.75thPercentile",
 				Type:      "gauge",
 				Value:     11,
 				Timestamp: 123,
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-timer.duration.99percentile",
+				Name:      "test-timer.duration.95thPercentile",
 				Type:      "gauge",
 				Value:     12,
 				Timestamp: 123,
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-timer.duration.99-9percentile",
+				Name:      "test-timer.duration.98thPercentile",
 				Type:      "gauge",
 				Value:     13,
 				Timestamp: 123,
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-timer.duration.99-99percentile",
+				Name:      "test-timer.duration.99thPercentile",
 				Type:      "gauge",
 				Value:     14,
 				Timestamp: 123,
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-timer.duration.99-999percentile",
+				Name:      "test-timer.duration.999thPercentile",
 				Type:      "gauge",
 				Value:     15,
 				Timestamp: 123,
@@ -407,6 +408,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			},
 		)))
 
+		Expect(fakeTimer.PercentilesArgsForCall(0)).To(Equal([]float64{75, 95, 98, 99, 99.9}))
 	})
 })
 
