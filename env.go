@@ -7,6 +7,8 @@ import (
 	"errors"
 )
 
+const serviceName = "custom-metrics-tile"
+
 func getInstanceIndex() (int, error) {
 	idx, err := strconv.Atoi(os.Getenv("INSTANCE_INDEX"))
 	return idx, err
@@ -40,7 +42,7 @@ func getCredentials() (accessToken, url string, err error) {
 	}
 
 	for k, v := range allServices {
-		if k == "custom-metrics-tile" {
+		if k == serviceName {
 			var serviceValues []map[string]*json.RawMessage
 			err = json.Unmarshal(*v, &serviceValues)
 			if err != nil {
