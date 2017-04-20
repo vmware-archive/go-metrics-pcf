@@ -63,7 +63,7 @@ func Pcf(registry metrics.Registry) {
 }
 
 func ExportWithOptions(registry metrics.Registry, options *Options) {
-	url := fmt.Sprintf("%s/apps/%s/instances/%s/%d", options.url, options.appGuid, options.instanceId, options.instanceIndex)
+	url := fmt.Sprintf("https://%s/apps/%s/instances/%s/%d", options.url, options.appGuid, options.instanceId, options.instanceIndex)
 
 	timer := time.NewTimer(options.frequency)
 	transport := newHttpTransporter(http.DefaultClient, url, options.token)
