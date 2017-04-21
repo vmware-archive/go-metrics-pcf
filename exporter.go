@@ -34,7 +34,7 @@ type Options struct {
 }
 
 func Pcf(registry metrics.Registry) {
-	metricForwarderUrl, apiToken, err := getCredentials()
+	apiToken, metricForwarderUrl, err := getCredentials()
 	if err != nil {
 		log.Printf("Could not get credentials: %s", err.Error())
 		return
