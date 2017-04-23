@@ -5,6 +5,7 @@ import (
 	. "github.com/onsi/gomega"
 	metricFakes "github.com/pivotal-cf/go-metrics-pcf/go-metrics-pcffakes"
 	"github.com/rcrowley/go-metrics"
+	"time"
 )
 
 var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
@@ -22,7 +23,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			fakeTimeHelper:    newFakeTimeHelper(),
 		}
 
-		tc.exporter = newExporter(newFakeTransporter(tc.transportMessages), tc.fakeTimeHelper)
+		tc.exporter = newExporter(newFakeTransporter(tc.transportMessages), tc.fakeTimeHelper, time.Millisecond)
 		return tc
 	}
 
@@ -287,13 +288,20 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 		fakeTimer.Rate1Returns(2)
 		fakeTimer.Rate5Returns(3)
 		fakeTimer.Rate15Returns(4)
-		fakeTimer.MeanReturns(5)
-		fakeTimer.StdDevReturns(6)
-		fakeTimer.SumReturns(7)
-		fakeTimer.VarianceReturns(8)
-		fakeTimer.MaxReturns(9)
-		fakeTimer.MinReturns(10)
-		fakeTimer.PercentilesReturns([]float64{11, 12, 13, 14, 15})
+		fakeTimer.RateMeanReturns(16)
+		fakeTimer.MeanReturns(5 * float64(time.Millisecond))
+		fakeTimer.StdDevReturns(6 * float64(time.Millisecond))
+		fakeTimer.SumReturns(7 * int64(time.Millisecond))
+		fakeTimer.VarianceReturns(8 * float64(time.Millisecond))
+		fakeTimer.MaxReturns(9 * int64(time.Millisecond))
+		fakeTimer.MinReturns(10 * int64(time.Millisecond))
+		fakeTimer.PercentilesReturns([]float64{
+			11 * float64(time.Millisecond),
+			12 * float64(time.Millisecond),
+			13 * float64(time.Millisecond),
+			14 * float64(time.Millisecond),
+			15 * float64(time.Millisecond),
+		})
 
 		tc.registry.Register("test-timer", fakeTimer)
 		tc.exporter.exportMetrics(tc.registry)
@@ -330,81 +338,88 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 				Unit:      "",
 			},
 			&dataPoint{
+				Name:      "test-timer.rate.mean",
+				Type:      "gauge",
+				Value:     16,
+				Timestamp: 123,
+				Unit:      "",
+			},
+			&dataPoint{
 				Name:      "test-timer.duration.mean",
 				Type:      "gauge",
 				Value:     5,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 			&dataPoint{
 				Name:      "test-timer.duration.stddev",
 				Type:      "gauge",
 				Value:     6,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 			&dataPoint{
 				Name:      "test-timer.duration.sum",
 				Type:      "gauge",
 				Value:     7,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 			&dataPoint{
 				Name:      "test-timer.duration.variance",
 				Type:      "gauge",
 				Value:     8,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 			&dataPoint{
 				Name:      "test-timer.duration.max",
 				Type:      "gauge",
 				Value:     9,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 			&dataPoint{
 				Name:      "test-timer.duration.min",
 				Type:      "gauge",
 				Value:     10,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 			&dataPoint{
 				Name:      "test-timer.duration.75thPercentile",
 				Type:      "gauge",
 				Value:     11,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 			&dataPoint{
 				Name:      "test-timer.duration.95thPercentile",
 				Type:      "gauge",
 				Value:     12,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 			&dataPoint{
 				Name:      "test-timer.duration.98thPercentile",
 				Type:      "gauge",
 				Value:     13,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 			&dataPoint{
 				Name:      "test-timer.duration.99thPercentile",
 				Type:      "gauge",
 				Value:     14,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 			&dataPoint{
 				Name:      "test-timer.duration.999thPercentile",
 				Type:      "gauge",
 				Value:     15,
 				Timestamp: 123,
-				Unit:      "",
+				Unit:      "ms",
 			},
 		)))
 

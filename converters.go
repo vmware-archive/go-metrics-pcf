@@ -3,8 +3,9 @@ package pcf
 import (
 	"fmt"
 	"github.com/rcrowley/go-metrics"
-	"strings"
 	"strconv"
+	"strings"
+	"time"
 )
 
 //go:generate Counterfeiter github.com/rcrowley/go-metrics.Counter
@@ -137,7 +138,21 @@ func convertHistogram(histogram metrics.Histogram, name string, currentTime int6
 	return points
 }
 
-func convertTimer(timer metrics.Timer, name string, currentTime int64) []*dataPoint {
+func convertTimer(timer metrics.Timer, name string, currentTime int64, timeUnit time.Duration) []*dataPoint {
+
+	unit := ""
+
+	switch {
+	case timeUnit == time.Second:
+		unit = "c"
+	case timeUnit == time.Millisecond:
+		unit = "ms"
+	case timeUnit == time.Microsecond:
+		unit = "us"
+	case timeUnit == time.Nanosecond:
+		unit = "ns"
+	}
+
 	points := []*dataPoint{
 		{
 			Name:      namer(name, "count"),
@@ -164,40 +179,52 @@ func convertTimer(timer metrics.Timer, name string, currentTime int64) []*dataPo
 			Type:      "gauge",
 		},
 		{
-			Name:      namer(name, "duration.mean"),
-			Value:     float64(timer.Mean()),
+			Name:      namer(name, "rate.mean"),
+			Value:     float64(timer.RateMean()),
 			Timestamp: currentTime,
 			Type:      "gauge",
+		},
+		{
+			Name:      namer(name, "duration.mean"),
+			Value:     timer.Mean() / float64(timeUnit),
+			Timestamp: currentTime,
+			Type:      "gauge",
+			Unit: unit,
 		},
 		{
 			Name:      namer(name, "duration.stddev"),
-			Value:     float64(timer.StdDev()),
+			Value:     timer.StdDev() / float64(timeUnit),
 			Timestamp: currentTime,
 			Type:      "gauge",
+			Unit: unit,
 		},
 		{
 			Name:      namer(name, "duration.sum"),
-			Value:     float64(timer.Sum()),
+			Value:     float64(timer.Sum() / int64(timeUnit)),
 			Timestamp: currentTime,
 			Type:      "gauge",
+			Unit: unit,
 		},
 		{
 			Name:      namer(name, "duration.variance"),
-			Value:     float64(timer.Variance()),
+			Value:     timer.Variance() / float64(timeUnit),
 			Timestamp: currentTime,
 			Type:      "gauge",
+			Unit: unit,
 		},
 		{
 			Name:      namer(name, "duration.max"),
-			Value:     float64(timer.Max()),
+			Value:     float64(timer.Max() / int64(timeUnit)),
 			Timestamp: currentTime,
 			Type:      "gauge",
+			Unit: unit,
 		},
 		{
 			Name:      namer(name, "duration.min"),
-			Value:     float64(timer.Min()),
+			Value:     float64(timer.Min() / int64(timeUnit)),
 			Timestamp: currentTime,
 			Type:      "gauge",
+			Unit: unit,
 		},
 	}
 
@@ -206,15 +233,16 @@ func convertTimer(timer metrics.Timer, name string, currentTime int64) []*dataPo
 		percentileName := strings.Replace(strconv.FormatFloat(percentiles[i], 'f', -1, 64), ".", "", -1)
 		points = append(points, &dataPoint{
 			Name:      namer(name, "duration", fmt.Sprintf("%sthPercentile", percentileName)),
-			Value:     float64(v),
+			Value:     v / float64(timeUnit),
 			Timestamp: currentTime,
 			Type:      "gauge",
+			Unit: unit,
 		})
 	}
 
 	return points
 }
 
-func namer(names ... string) string {
+func namer(names ...string) string {
 	return strings.Join(names, ".")
 }

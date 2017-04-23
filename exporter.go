@@ -31,6 +31,7 @@ type Options struct {
 	token         string
 	url           string
 	appGuid       string
+	timeUnit      time.Duration
 }
 
 func Pcf(registry metrics.Registry) {
@@ -40,11 +41,11 @@ func Pcf(registry metrics.Registry) {
 		return
 	}
 
-  appGuid, err := getAppGuid()
-  if err != nil {
-    log.Printf("Could not get app guid: %s", err.Error())
-    return
-  }
+	appGuid, err := getAppGuid()
+	if err != nil {
+		log.Printf("Could not get app guid: %s", err.Error())
+		return
+	}
 
 	instanceIndex, err := getInstanceIndex()
 	if err != nil {
@@ -56,6 +57,7 @@ func Pcf(registry metrics.Registry) {
 		url:           metricForwarderUrl,
 		token:         apiToken,
 		frequency:     time.Minute,
+		timeUnit:      time.Millisecond,
 		appGuid:       appGuid,
 		instanceId:    getInstanceGuid(),
 		instanceIndex: instanceIndex,
@@ -67,7 +69,7 @@ func ExportWithOptions(registry metrics.Registry, options *Options) {
 
 	timer := time.NewTimer(options.frequency)
 	transport := newHttpTransporter(http.DefaultClient, url, options.token)
-	exporter := newExporter(transport, &realTimeHelper{})
+	exporter := newExporter(transport, &realTimeHelper{}, options.timeUnit)
 
 	for {
 		<-timer.C
@@ -83,12 +85,14 @@ func ExportWithOptions(registry metrics.Registry, options *Options) {
 type exporter struct {
 	transport  transporter
 	timeHelper timeHelper
+	timeUnit   time.Duration
 }
 
-func newExporter(transport transporter, timeHelper timeHelper) *exporter {
+func newExporter(transport transporter, timeHelper timeHelper, timeUnit time.Duration) *exporter {
 	return &exporter{
 		transport:  transport,
 		timeHelper: timeHelper,
+		timeUnit:   timeUnit,
 	}
 }
 
@@ -113,7 +117,7 @@ func (e *exporter) assembleDataPoints(registry metrics.Registry) []*dataPoint {
 		case metrics.Meter:
 			data = append(data, convertMeter(m.Snapshot(), name, currentTime)...)
 		case metrics.Timer:
-			data = append(data, convertTimer(m.Snapshot(), name, currentTime)...)
+			data = append(data, convertTimer(m.Snapshot(), name, currentTime, e.timeUnit)...)
 		case metrics.Histogram:
 			data = append(data, convertHistogram(m.Snapshot(), name, currentTime)...)
 		}
