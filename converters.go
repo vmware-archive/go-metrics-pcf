@@ -164,7 +164,7 @@ func convertTimer(timer metrics.Timer, name string, currentTime int64) []*dataPo
 			Type:      "gauge",
 		},
 		{
-			Name:      namer(name, "rate.mean"),
+			Name:      namer(name, "duration.mean"),
 			Value:     float64(timer.Mean()),
 			Timestamp: currentTime,
 			Type:      "gauge",

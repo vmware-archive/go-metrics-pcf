@@ -330,7 +330,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 				Unit:      "",
 			},
 			&dataPoint{
-				Name:      "test-timer.rate.mean",
+				Name:      "test-timer.duration.mean",
 				Type:      "gauge",
 				Value:     5,
 				Timestamp: 123,
