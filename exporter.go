@@ -34,8 +34,8 @@ type Options struct {
 	timeUnit      time.Duration
 }
 
-func Pcf(registry metrics.Registry) {
-	apiToken, metricForwarderUrl, err := getCredentials()
+func Pcf(registry metrics.Registry, serviceName string) {
+	apiToken, metricForwarderUrl, err := getCredentials(serviceName)
 	if err != nil {
 		log.Printf("Could not get credentials: %s", err.Error())
 		return

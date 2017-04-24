@@ -7,8 +7,6 @@ import (
 	"errors"
 )
 
-const serviceName = "custom-metrics-tile"
-
 func getInstanceIndex() (int, error) {
 	idx, err := strconv.Atoi(os.Getenv("INSTANCE_INDEX"))
 	return idx, err
@@ -34,7 +32,7 @@ func getAppGuid() (string, error) {
 	return appGuid, nil
 }
 
-func getCredentials() (accessToken, url string, err error) {
+func getCredentials(serviceName string) (accessToken, url string, err error) {
 	var allServices map[string]*json.RawMessage
 	err = json.Unmarshal([]byte(os.Getenv("VCAP_SERVICES")), &allServices)
 	if err != nil {
