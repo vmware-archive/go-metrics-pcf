@@ -144,13 +144,13 @@ func convertTimer(timer metrics.Timer, name string, currentTime int64, timeUnit 
 
 	switch {
 	case timeUnit == time.Second:
-		unit = "c"
+		unit = "seconds"
 	case timeUnit == time.Millisecond:
-		unit = "ms"
+		unit = "milliseconds"
 	case timeUnit == time.Microsecond:
-		unit = "us"
+		unit = "microseconds"
 	case timeUnit == time.Nanosecond:
-		unit = "ns"
+		unit = "nanoseconds"
 	}
 
 	points := []*dataPoint{
