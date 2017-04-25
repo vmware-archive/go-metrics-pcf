@@ -8,6 +8,8 @@ import (
 	"time"
 )
 
+const defaultCfMetricsServiceName = "cf-metrics"
+
 type dataPoint struct {
 	Name      string  `json:"name"`
 	Type      string  `json:"type"`
@@ -25,55 +27,81 @@ type timeHelper interface {
 }
 
 type Options struct {
-	frequency     time.Duration
-	instanceId    string
-	instanceIndex int
-	token         string
-	url           string
-	appGuid       string
-	timeUnit      time.Duration
+	Frequency     time.Duration
+	InstanceId    string
+	InstanceIndex string
+	Token         string
+	Url           string
+	AppGuid       string
+	TimeUnit      time.Duration
+	ServiceName   string
 }
 
-func Pcf(registry metrics.Registry, serviceName string) {
-	apiToken, metricForwarderUrl, err := getCredentials(serviceName)
-	if err != nil {
-		log.Printf("Could not get credentials: %s", err.Error())
-		return
-	}
-
-	appGuid, err := getAppGuid()
-	if err != nil {
-		log.Printf("Could not get app guid: %s", err.Error())
-		return
-	}
-
-	instanceIndex, err := getInstanceIndex()
-	if err != nil {
-		log.Printf("Could not get instance index: %s", err.Error())
-		return
-	}
-
-	ExportWithOptions(registry, &Options{
-		url:           metricForwarderUrl,
-		token:         apiToken,
-		frequency:     time.Minute,
-		timeUnit:      time.Millisecond,
-		appGuid:       appGuid,
-		instanceId:    getInstanceGuid(),
-		instanceIndex: instanceIndex,
-	})
+func Pcf(registry metrics.Registry) {
+	ExportWithOptions(registry, &Options{})
 }
 
 func ExportWithOptions(registry metrics.Registry, options *Options) {
-	url := fmt.Sprintf("https://%s/apps/%s/instances/%s/%d", options.url, options.appGuid, options.instanceId, options.instanceIndex)
 
-	timer := time.NewTimer(options.frequency)
-	transport := newHttpTransporter(http.DefaultClient, url, options.token)
-	exporter := newExporter(transport, &realTimeHelper{}, options.timeUnit)
+	if options.ServiceName == "" {
+		options.ServiceName = defaultCfMetricsServiceName
+	}
+
+	if options.Token == "" {
+		apiToken, err := getToken(options.ServiceName)
+		if err != nil {
+			log.Printf("Could not get apiToken: %s", err.Error())
+			return
+		}
+
+		options.Token = apiToken
+	}
+
+	if options.Url == "" {
+		apiUrl, err := getUrl(options.ServiceName)
+		if err != nil {
+			log.Printf("Could not get Url: %s", err.Error())
+			return
+		}
+
+		options.Url = apiUrl
+	}
+
+	if options.AppGuid == "" {
+		appGuid, err := getAppGuid()
+		if err != nil {
+			log.Printf("Could not get app guid: %s", err.Error())
+			return
+		}
+
+		options.AppGuid = appGuid
+	}
+
+	if options.InstanceIndex == "" {
+		options.InstanceIndex = getInstanceIndex()
+	}
+
+	if options.InstanceId == "" {
+		options.InstanceId = getInstanceGuid()
+	}
+
+	if int64(options.TimeUnit) == 0 {
+		options.TimeUnit = time.Millisecond
+	}
+
+	if int64(options.Frequency) == 0 {
+		options.Frequency = time.Minute
+	}
+
+	url := fmt.Sprintf("https://%s/apps/%s/instances/%s/%d", options.Url, options.AppGuid, options.InstanceId, options.InstanceIndex)
+
+	timer := time.NewTimer(options.Frequency)
+	transport := newHttpTransporter(http.DefaultClient, url, options.Token)
+	exporter := newExporter(transport, &realTimeHelper{}, options.TimeUnit)
 
 	for {
 		<-timer.C
-		timer.Reset(options.frequency)
+		timer.Reset(options.Frequency)
 
 		err := exporter.exportMetrics(registry)
 		if err != nil {

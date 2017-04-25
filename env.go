@@ -1,15 +1,13 @@
 package pcf
 
 import (
-	"os"
 	"encoding/json"
-	"strconv"
 	"errors"
+	"os"
 )
 
-func getInstanceIndex() (int, error) {
-	idx, err := strconv.Atoi(os.Getenv("INSTANCE_INDEX"))
-	return idx, err
+func getInstanceIndex() string {
+	return os.Getenv("INSTANCE_INDEX")
 }
 
 func getInstanceGuid() string {
@@ -30,6 +28,16 @@ func getAppGuid() (string, error) {
 	}
 
 	return appGuid, nil
+}
+
+func getToken(serviceName string) (string, error) {
+	token, _, err := getCredentials(serviceName)
+	return token, err
+}
+
+func getUrl(serviceName string) (string, error) {
+	_, url, err := getCredentials(serviceName)
+	return url, err
 }
 
 func getCredentials(serviceName string) (accessToken, url string, err error) {
