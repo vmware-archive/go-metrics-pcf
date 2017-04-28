@@ -93,7 +93,7 @@ func ExportWithOptions(registry metrics.Registry, options *Options) {
 		options.Frequency = time.Minute
 	}
 
-	url := fmt.Sprintf("https://%s/apps/%s/instances/%s/%d", options.Url, options.AppGuid, options.InstanceId, options.InstanceIndex)
+	url := fmt.Sprintf("https://%s/apps/%s/instances/%s/%s", options.Url, options.AppGuid, options.InstanceId, options.InstanceIndex)
 
 	timer := time.NewTimer(options.Frequency)
 	transport := newHttpTransporter(http.DefaultClient, url, options.Token)
