@@ -1,11 +1,12 @@
-package pcf
+package pcfmetrics
 
 import (
 	"fmt"
-	"github.com/rcrowley/go-metrics"
 	"log"
 	"net/http"
 	"time"
+
+	"github.com/rcrowley/go-metrics"
 )
 
 const defaultCfMetricsServiceName = "cf-metrics"
@@ -37,12 +38,11 @@ type Options struct {
 	ServiceName   string
 }
 
-func Pcf(registry metrics.Registry) {
+func StartExporter(registry metrics.Registry) {
 	ExportWithOptions(registry, &Options{})
 }
 
 func ExportWithOptions(registry metrics.Registry, options *Options) {
-
 	if options.ServiceName == "" {
 		options.ServiceName = defaultCfMetricsServiceName
 	}

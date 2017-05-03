@@ -1,11 +1,12 @@
-package pcf
+package pcfmetrics
 
 import (
+	"time"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	metricFakes "github.com/pivotal-cf/go-metrics-pcf/go-metrics-pcffakes"
 	"github.com/rcrowley/go-metrics"
-	"time"
 )
 
 var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {

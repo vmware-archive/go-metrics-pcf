@@ -1,10 +1,10 @@
-package pcf
+package pcfmetrics
 
 import (
-	"net/http"
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"net/http"
 )
 
 type HttpClient interface {
@@ -12,16 +12,16 @@ type HttpClient interface {
 }
 
 type httpTransporter struct {
-	url   string
-	token string
+	url    string
+	token  string
 	client HttpClient
 }
 
 func newHttpTransporter(client HttpClient, url string, token string) *httpTransporter {
 	return &httpTransporter{
 		client: client,
-		url:   url,
-		token: token,
+		url:    url,
+		token:  token,
 	}
 }
 

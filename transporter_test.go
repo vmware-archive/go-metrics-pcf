@@ -1,15 +1,15 @@
-package pcf
+package pcfmetrics
 
 import (
 	"encoding/json"
+	"io/ioutil"
+	"net/http"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"net/http"
-  "io/ioutil"
 )
 
 var _ = Describe("httpTransporter", func() {
-
 	It("sends POST requests to the metric forwarder", func() {
 		fakeHttpClient := newFakeHttpClient()
 		fakeHttpClient.returnCode = 200
@@ -26,7 +26,7 @@ var _ = Describe("httpTransporter", func() {
 			},
 		})
 
-    Expect(err).To(Not(HaveOccurred()))
+		Expect(err).To(Not(HaveOccurred()))
 
 		req := <-fakeHttpClient.requests
 
@@ -34,7 +34,7 @@ var _ = Describe("httpTransporter", func() {
 		Expect(req.Header.Get("Content-Type")).To(Equal("application/json"))
 
 		var result []dataPoint
-    bytes, _ := ioutil.ReadAll(req.Body)
+		bytes, _ := ioutil.ReadAll(req.Body)
 		json.Unmarshal(bytes, &result)
 
 		Expect(result).To(ConsistOf(dataPoint{
@@ -46,24 +46,24 @@ var _ = Describe("httpTransporter", func() {
 		}))
 	})
 
-  It("returns an error if the status is non 2xx", func() {
-    fakeHttpClient := newFakeHttpClient()
-    fakeHttpClient.returnCode = 500
+	It("returns an error if the status is non 2xx", func() {
+		fakeHttpClient := newFakeHttpClient()
+		fakeHttpClient.returnCode = 500
 
-    transporter := newHttpTransporter(fakeHttpClient, "http://example.com/metrics", "test-token")
+		transporter := newHttpTransporter(fakeHttpClient, "http://example.com/metrics", "test-token")
 
-    err := transporter.send([]*dataPoint{
-      {
-        Name:      "test-counter",
-        Type:      "COUNTER",
-        Value:     123,
-        Timestamp: 872828732,
-        Unit:      "counts",
-      },
-    })
+		err := transporter.send([]*dataPoint{
+			{
+				Name:      "test-counter",
+				Type:      "COUNTER",
+				Value:     123,
+				Timestamp: 872828732,
+				Unit:      "counts",
+			},
+		})
 
-    Expect(err).To(HaveOccurred())
-  })
+		Expect(err).To(HaveOccurred())
+	})
 })
 
 type fakeHttpClient struct {

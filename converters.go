@@ -1,11 +1,12 @@
-package pcf
+package pcfmetrics
 
 import (
 	"fmt"
-	"github.com/rcrowley/go-metrics"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/rcrowley/go-metrics"
 )
 
 //go:generate Counterfeiter github.com/rcrowley/go-metrics.Counter
@@ -189,42 +190,42 @@ func convertTimer(timer metrics.Timer, name string, currentTime int64, timeUnit 
 			Value:     timer.Mean() / float64(timeUnit),
 			Timestamp: currentTime,
 			Type:      "gauge",
-			Unit: unit,
+			Unit:      unit,
 		},
 		{
 			Name:      namer(name, "duration.stddev"),
 			Value:     timer.StdDev() / float64(timeUnit),
 			Timestamp: currentTime,
 			Type:      "gauge",
-			Unit: unit,
+			Unit:      unit,
 		},
 		{
 			Name:      namer(name, "duration.sum"),
 			Value:     float64(timer.Sum() / int64(timeUnit)),
 			Timestamp: currentTime,
 			Type:      "gauge",
-			Unit: unit,
+			Unit:      unit,
 		},
 		{
 			Name:      namer(name, "duration.variance"),
 			Value:     timer.Variance() / float64(timeUnit),
 			Timestamp: currentTime,
 			Type:      "gauge",
-			Unit: unit,
+			Unit:      unit,
 		},
 		{
 			Name:      namer(name, "duration.max"),
 			Value:     float64(timer.Max() / int64(timeUnit)),
 			Timestamp: currentTime,
 			Type:      "gauge",
-			Unit: unit,
+			Unit:      unit,
 		},
 		{
 			Name:      namer(name, "duration.min"),
 			Value:     float64(timer.Min() / int64(timeUnit)),
 			Timestamp: currentTime,
 			Type:      "gauge",
-			Unit: unit,
+			Unit:      unit,
 		},
 	}
 
@@ -236,7 +237,7 @@ func convertTimer(timer metrics.Timer, name string, currentTime int64, timeUnit 
 			Value:     v / float64(timeUnit),
 			Timestamp: currentTime,
 			Type:      "gauge",
-			Unit: unit,
+			Unit:      unit,
 		})
 	}
 

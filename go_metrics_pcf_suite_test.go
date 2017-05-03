@@ -1,4 +1,4 @@
-package pcf_test
+package pcfmetrics_test
 
 import (
 	. "github.com/onsi/ginkgo"

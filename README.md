@@ -1,4 +1,4 @@
-This is the `go-metrics` exporter for Pivotal Cloud Foundry.
+This is the `go-metrics` exporter for Pivotal Cloud Foundry (PCF) Metrics.
 
 It is designed to work with the [go-metrics](https://github.com/rcrowley/go-metrics) library, which is a Go port of [Dropwizard metrics](https://github.com/dropwizard/metrics).
 
@@ -17,7 +17,7 @@ import (
 
 func main() {
     // start exporting to PCF every minute
-    go pcf.Pcf(metrics.DefaultRegistry)
+    go pcfmetrics.StartExporter(metrics.DefaultRegistry)
     ...
 
     timer := metrics.GetOrRegisterTimer("sample-timer", metrics.DefaultRegistry)

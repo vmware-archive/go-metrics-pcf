@@ -1,4 +1,4 @@
-package pcf
+package pcfmetrics
 
 import (
 	"encoding/json"
