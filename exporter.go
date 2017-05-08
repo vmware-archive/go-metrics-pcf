@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/rcrowley/go-metrics"
+	"crypto/tls"
 )
 
 const defaultCfMetricsServiceName = "cf-metrics"
@@ -36,13 +37,14 @@ type Options struct {
 	AppGuid       string
 	TimeUnit      time.Duration
 	ServiceName   string
+	SkipSSLVerification bool
 }
 
 func StartExporter(registry metrics.Registry) {
-	ExportWithOptions(registry, &Options{})
+	StartExporterWithOptions(registry, &Options{})
 }
 
-func ExportWithOptions(registry metrics.Registry, options *Options) {
+func StartExporterWithOptions(registry metrics.Registry, options *Options) {
 	if options.ServiceName == "" {
 		options.ServiceName = defaultCfMetricsServiceName
 	}
@@ -93,10 +95,15 @@ func ExportWithOptions(registry metrics.Registry, options *Options) {
 		options.Frequency = time.Minute
 	}
 
+	httpTransport := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: options.SkipSSLVerification},
+	}
+	client := &http.Client{Transport: httpTransport}
+
 	url := fmt.Sprintf("https://%s/apps/%s/instances/%s/%s", options.Url, options.AppGuid, options.InstanceId, options.InstanceIndex)
 
 	timer := time.NewTimer(options.Frequency)
-	transport := newHttpTransporter(http.DefaultClient, url, options.Token)
+	transport := newHttpTransporter(client, url, options.Token)
 	exporter := newExporter(transport, &realTimeHelper{}, options.TimeUnit)
 
 	for {
