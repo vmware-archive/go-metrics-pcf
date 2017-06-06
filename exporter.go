@@ -1,7 +1,6 @@
 package pcfmetrics
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -29,14 +28,14 @@ type timeHelper interface {
 }
 
 type Options struct {
-	Frequency     time.Duration
-	InstanceId    string
-	InstanceIndex string
-	Token         string
-	Url           string
-	AppGuid       string
-	TimeUnit      time.Duration
-	ServiceName   string
+	Frequency           time.Duration
+	InstanceId          string
+	InstanceIndex       string
+	Token               string
+	Url                 string
+	AppGuid             string
+	TimeUnit            time.Duration
+	ServiceName         string
 	SkipSSLVerification bool
 }
 
@@ -100,10 +99,8 @@ func StartExporterWithOptions(registry metrics.Registry, options *Options) {
 	}
 	client := &http.Client{Transport: httpTransport}
 
-	url := fmt.Sprintf("https://%s/apps/%s/instances/%s/%s", options.Url, options.AppGuid, options.InstanceId, options.InstanceIndex)
-
 	timer := time.NewTimer(options.Frequency)
-	transport := newHttpTransporter(client, url, options.Token)
+	transport := newHttpTransporter(client, options)
 	exporter := newExporter(transport, &realTimeHelper{}, options.TimeUnit)
 
 	for {

@@ -14,7 +14,13 @@ var _ = Describe("httpTransporter", func() {
 		fakeHttpClient := newFakeHttpClient()
 		fakeHttpClient.returnCode = 200
 
-		transporter := newHttpTransporter(fakeHttpClient, "http://example.com/metrics", "test-token")
+		transporter := newHttpTransporter(fakeHttpClient, &Options{
+			AppGuid:       "some-application-id",
+			InstanceId:    "some-instance-id",
+			InstanceIndex: "1",
+			Token:         "test-token",
+			Url:           "metric-forwarder.example.com",
+		})
 
 		err := transporter.send([]*dataPoint{
 			{
@@ -30,19 +36,37 @@ var _ = Describe("httpTransporter", func() {
 
 		req := <-fakeHttpClient.requests
 
+		Expect(req.URL.Scheme).To(Equal("https"))
+		Expect(req.URL.Host).To(Equal("metric-forwarder.example.com"))
+		Expect(req.URL.Path).To(Equal("/v1/metrics"))
 		Expect(req.Header.Get("Authorization")).To(Equal("test-token"))
 		Expect(req.Header.Get("Content-Type")).To(Equal("application/json"))
 
-		var result []dataPoint
+		var result metricForwarderPayload
 		bytes, _ := ioutil.ReadAll(req.Body)
 		json.Unmarshal(bytes, &result)
 
-		Expect(result).To(ConsistOf(dataPoint{
-			Name:      "test-counter",
-			Type:      "COUNTER",
-			Value:     123,
-			Timestamp: 872828732,
-			Unit:      "counts",
+		Expect(result).To(Equal(metricForwarderPayload{
+			Applications: []metricForwarderApplication{
+				{
+					Id: "some-application-id",
+					Instances: []metricForwarderInstance{
+						{
+							Id:    "some-instance-id",
+							Index: "1",
+							Metrics: []*dataPoint{
+								{
+									Name:      "test-counter",
+									Type:      "COUNTER",
+									Value:     123,
+									Timestamp: 872828732,
+									Unit:      "counts",
+								},
+							},
+						},
+					},
+				},
+			},
 		}))
 	})
 
@@ -50,7 +74,13 @@ var _ = Describe("httpTransporter", func() {
 		fakeHttpClient := newFakeHttpClient()
 		fakeHttpClient.returnCode = 500
 
-		transporter := newHttpTransporter(fakeHttpClient, "http://example.com/metrics", "test-token")
+		transporter := newHttpTransporter(fakeHttpClient, &Options{
+			AppGuid:       "some-application-id",
+			InstanceId:    "some-instance-id",
+			InstanceIndex: "1",
+			Token:         "test-token",
+			Url:           "",
+		})
 
 		err := transporter.send([]*dataPoint{
 			{
