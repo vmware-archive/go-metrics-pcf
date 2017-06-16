@@ -148,7 +148,7 @@ func WithServiceName(n string) ExporterOption {
 	}
 }
 
-// WithSkipSSL sets the ServiceName.
+// WithSkipSSL sets the InsecureSkipVerify flag on the HTTP transport.
 func WithSkipSSL(skip bool) ExporterOption {
 	return func(o *Options) {
 		o.SkipSSLVerification = skip
