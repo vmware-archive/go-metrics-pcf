@@ -76,7 +76,7 @@ func getCredentials(serviceName string) (accessToken, url string, err error) {
 
 			}
 
-			return creds["access_key"], creds["hostname"], nil
+			return creds["access_key"], creds["endpoint"], nil
 		}
 	}
 
