@@ -180,6 +180,10 @@ func StartExporter(registry metrics.Registry, opts ...ExporterOption) {
 func StartExporterWithOptions(registry metrics.Registry, options *Options) {
 	options.fillDefaults()
 
+	if options.Url == "" {
+		return
+	}
+
 	httpTransport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: options.SkipSSLVerification},
 	}
