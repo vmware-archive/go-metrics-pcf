@@ -52,7 +52,7 @@ var _ = Describe("httpTransporter", func() {
 
 		Expect(req.URL.Scheme).To(Equal("https"))
 		Expect(req.URL.Host).To(Equal("whereTheMetricsGo.com"))
-		Expect(req.URL.Path).To(Equal("somepath"))
+		Expect(req.URL.Path).To(Equal("/somepath"))
 		Expect(req.Header.Get("Authorization")).To(Equal("test-token"))
 		Expect(req.Header.Get("Content-Type")).To(Equal("application/json"))
 
