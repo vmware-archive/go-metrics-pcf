@@ -33,7 +33,7 @@ var _ = Describe("httpTransporter", func() {
 			InstanceId:    "some-instance-id",
 			InstanceIndex: "1",
 			Token:         "test-token",
-			Url:           "metric-forwarder.example.com",
+			Url:           "https://whereTheMetricsGo.com/somepath",
 		})
 
 		err := transporter.send([]*dataPoint{
@@ -51,8 +51,8 @@ var _ = Describe("httpTransporter", func() {
 		req := <-fakeHttpClient.requests
 
 		Expect(req.URL.Scheme).To(Equal("https"))
-		Expect(req.URL.Host).To(Equal("metric-forwarder.example.com"))
-		Expect(req.URL.Path).To(Equal("/v1/metrics"))
+		Expect(req.URL.Host).To(Equal("whereTheMetricsGo.com"))
+		Expect(req.URL.Path).To(Equal("somepath"))
 		Expect(req.Header.Get("Authorization")).To(Equal("test-token"))
 		Expect(req.Header.Get("Content-Type")).To(Equal("application/json"))
 

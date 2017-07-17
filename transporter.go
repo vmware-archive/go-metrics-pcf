@@ -58,9 +58,7 @@ func (h *httpTransporter) send(points []*dataPoint) error {
 		return err
 	}
 
-	url := fmt.Sprintf("https://%s/v1/metrics", h.options.Url)
-
-	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
+	req, err := http.NewRequest(http.MethodPost, h.options.Url, bytes.NewBuffer(body))
 	if err != nil {
 		return err
 	}
