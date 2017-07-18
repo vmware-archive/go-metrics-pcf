@@ -154,8 +154,7 @@ func convertHistogram(histogram metrics.Histogram, name string, currentTime int6
 }
 
 func convertTimer(timer metrics.Timer, name string, currentTime int64, timeUnit time.Duration) []*dataPoint {
-
-	unit := ""
+	var unit string
 
 	switch {
 	case timeUnit == time.Second:
@@ -166,6 +165,9 @@ func convertTimer(timer metrics.Timer, name string, currentTime int64, timeUnit 
 		unit = "microseconds"
 	case timeUnit == time.Nanosecond:
 		unit = "nanoseconds"
+	default:
+		unit = "milliseconds"
+		timeUnit = time.Millisecond
 	}
 
 	points := []*dataPoint{

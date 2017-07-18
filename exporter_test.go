@@ -440,6 +440,34 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 
 		Expect(fakeTimer.PercentilesArgsForCall(0)).To(Equal([]float64{75, 95, 98, 99, 99.9}))
 	})
+
+	It("uses milliseconds as the default time unit", func() {
+		tc := &testContext{
+			registry:          metrics.NewRegistry(),
+			transportMessages: make(chan []*dataPoint, 100),
+			fakeTimeHelper:    newFakeTimeHelper(),
+		}
+
+		options := &Options{}
+		tc.exporter = newExporter(newFakeTransporter(tc.transportMessages), tc.fakeTimeHelper, options.TimeUnit)
+		tc.fakeTimeHelper.returnValue = 123
+
+		fakeTimer := new(metricFakes.FakeTimer)
+		fakeTimer.SnapshotReturns(fakeTimer)
+		fakeTimer.SumReturns(7 * int64(time.Millisecond))
+		tc.registry.Register("test-timer", fakeTimer)
+		tc.exporter.exportMetrics(tc.registry)
+
+		Expect(tc.transportMessages).To(Receive(ContainElement(
+			&dataPoint{
+				Name:      "test-timer.duration.sum",
+				Type:      "gauge",
+				Value:     7,
+				Timestamp: 123,
+				Unit:      "milliseconds",
+			},
+		)))
+	})
 })
 
 type fakeTimeHelper struct {
