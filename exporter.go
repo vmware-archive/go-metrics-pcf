@@ -24,7 +24,7 @@ import (
 	"github.com/rcrowley/go-metrics"
 )
 
-const defaultCfMetricsServiceName = "cf-metrics"
+const defaultCfMetricsServiceName = "metrics-forwarder"
 
 type dataPoint struct {
 	Name      string  `json:"name"`
