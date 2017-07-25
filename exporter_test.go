@@ -23,7 +23,7 @@ import (
 
 	metricFakes "github.com/pivotal-cf/go-metrics-pcf/go-metrics-pcffakes"
 	"github.com/rcrowley/go-metrics"
-	pcfmetrics "github.com/pivotal-cf/go-metrics-pcf"
+	"github.com/pivotal-cf/go-metrics-pcf"
 	"net/http/httptest"
 	"net/http"
 	"io/ioutil"
@@ -46,10 +46,10 @@ type instance struct {
 }
 
 type metric struct {
-	Name  string `json:"name"`
-	Type  string `json:"type"`
-	Value float64 `json:"value"`
-	Unit  string `json:"unit"`
+	Name      string `json:"name"`
+	Type      string `json:"type"`
+	Value     float64 `json:"value"`
+	Unit      string `json:"unit"`
 	Timestamp *int64 `json:"timestamp,omitempty"`
 }
 
@@ -83,6 +83,12 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			),
 		)
 
+		return tc
+	}
+
+	var setupAndStart = func(responseCode int) *testContext {
+		tc := setup(responseCode)
+
 		go pcfmetrics.StartExporter(
 			tc.registry,
 			pcfmetrics.WithFrequency(100*time.Millisecond),
@@ -99,7 +105,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 
 	Describe("metric format", func() {
 		It("exports metrics with the current timestamp", func() {
-			tc := setup(http.StatusOK)
+			tc := setupAndStart(http.StatusOK)
 			defer teardown(tc)
 
 			counter := metrics.NewCounter()
@@ -121,12 +127,12 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			metrics := instances[0].Metrics
 			Expect(metrics).To(HaveLen(1))
 
-			unixTime := time.Unix(0, *metrics[0].Timestamp * int64(time.Millisecond))
+			unixTime := time.Unix(0, *metrics[0].Timestamp*int64(time.Millisecond))
 			Expect(unixTime).To(BeTemporally("~", time.Now().UTC(), time.Second))
 		})
 
 		It("exports counter metrics", func() {
-			tc := setup(http.StatusOK)
+			tc := setupAndStart(http.StatusOK)
 			defer teardown(tc)
 
 			counter := metrics.NewCounter()
@@ -148,7 +154,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 		})
 
 		It("exports gauge metrics", func() {
-			tc := setup(http.StatusOK)
+			tc := setupAndStart(http.StatusOK)
 			defer teardown(tc)
 
 			gauge := metrics.NewGauge()
@@ -170,7 +176,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 		})
 
 		It("exports gauge float64 metrics", func() {
-			tc := setup(http.StatusOK)
+			tc := setupAndStart(http.StatusOK)
 			defer teardown(tc)
 
 			gauge := metrics.NewGaugeFloat64()
@@ -192,7 +198,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 		})
 
 		It("exports meter metrics", func() {
-			tc := setup(http.StatusOK)
+			tc := setupAndStart(http.StatusOK)
 			defer teardown(tc)
 
 			fakeMeter := new(metricFakes.FakeMeter)
@@ -244,7 +250,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 		})
 
 		It("exports histogram metrics", func() {
-			tc := setup(http.StatusOK)
+			tc := setupAndStart(http.StatusOK)
 			defer teardown(tc)
 
 			fakeHistogram := new(metricFakes.FakeHistogram)
@@ -341,7 +347,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 		})
 
 		It("exports timer metrics", func() {
-			tc := setup(http.StatusOK)
+			tc := setupAndStart(http.StatusOK)
 			defer teardown(tc)
 
 			fakeTimer := new(metricFakes.FakeTimer)
@@ -471,37 +477,56 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 		})
 	})
 
-	It("uses milliseconds as the default timer time unit", func() {
-		tc := setup(http.StatusOK)
-		defer teardown(tc)
-
-		fakeTimer := new(metricFakes.FakeTimer)
-		fakeTimer.SnapshotReturns(fakeTimer)
-		fakeTimer.SumReturns(7 * int64(time.Millisecond))
-		tc.registry.Register("test-timer", fakeTimer)
-
-		expectedJson := metricsToJsonString([]*metric{
-			{
-				Name:  "test-timer.duration.sum",
-				Type:  "gauge",
-				Value: 7,
-				Unit:  "milliseconds",
-			},
-		})
-
-		var payload []byte
-		Eventually(tc.requestBodies).Should(Receive(&payload))
-		Expect(string(payload)).To(ContainUnorderedJSON(expectedJson, WithUnorderedListKeys("metrics")))
-	})
-
 	It("continues to try and send metrics if metrics forwarder returns a bad status code", func() {
-		tc := setup(http.StatusInternalServerError)
+		tc := setupAndStart(http.StatusInternalServerError)
 		defer teardown(tc)
 
 		Eventually(tc.requestBodies).Should(HaveLen(2))
 	})
 
-	Describe("options", func() {
+	Describe("default options", func() {
+		It("uses milliseconds as the default timer time unit", func() {
+			tc := setupAndStart(http.StatusOK)
+			defer teardown(tc)
+
+			fakeTimer := new(metricFakes.FakeTimer)
+			fakeTimer.SnapshotReturns(fakeTimer)
+			fakeTimer.SumReturns(7 * int64(time.Millisecond))
+			tc.registry.Register("test-timer", fakeTimer)
+
+			expectedJson := metricsToJsonString([]*metric{
+				{
+					Name:  "test-timer.duration.sum",
+					Type:  "gauge",
+					Value: 7,
+					Unit:  "milliseconds",
+				},
+			})
+
+			var payload []byte
+			Eventually(tc.requestBodies).Should(Receive(&payload))
+			Expect(string(payload)).To(ContainUnorderedJSON(expectedJson, WithUnorderedListKeys("metrics")))
+		})
+
+		It("sets the default metric rate to more than 5 seconds", func() {
+			tc := setup(http.StatusOK)
+			defer teardown(tc)
+
+			go pcfmetrics.StartExporter(
+				tc.registry,
+				pcfmetrics.WithToken("fake-token"),
+				pcfmetrics.WithURL(tc.fakeMetricsForwarderServer.URL),
+				pcfmetrics.WithAppGuid("fake-app-guid"),
+			)
+
+			counter := metrics.NewCounter()
+			tc.registry.Register("test-counter", counter)
+
+			Consistently(tc.requestBodies, 5).Should(HaveLen(0))
+		})
+	})
+
+	Describe("setting options", func() {
 		//TODO test option functions
 	})
 })

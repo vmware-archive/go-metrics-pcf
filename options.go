@@ -48,6 +48,10 @@ func (o *Options) fillDefaults() {
 
 		o.AppGuid = appGuid
 	}
+
+	if o.Frequency == time.Duration(0) {
+		o.Frequency = time.Minute
+	}
 }
 
 // ExporterOption is used to configure an exporter.
