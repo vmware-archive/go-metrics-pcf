@@ -57,8 +57,6 @@ func StartExporter(registry metrics.Registry, opts ...ExporterOption) {
 		o(options)
 	}
 
-	options.fillDefaults()
-
 	StartExporterWithOptions(registry, options)
 }
 
@@ -68,6 +66,7 @@ func StartExporterWithOptions(registry metrics.Registry, options *Options) {
 	options.fillDefaults()
 
 	if options.Url == "" {
+		log.Println("Could not export metrics to PCF: no URL provided")
 		return
 	}
 

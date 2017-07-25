@@ -1,0 +1,12 @@
+*.iml
+/*.ipr
+*.coverprofile
+*.idea
+/.blobs
+/.bundle
+/.cache
+/.dev_builds
+/blobs
+/config/private.yml
+/bin
+tmp/
