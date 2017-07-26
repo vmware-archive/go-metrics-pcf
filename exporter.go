@@ -46,20 +46,20 @@ type transporter interface {
 }
 
 type exporter struct {
-	transport  transporter
-	timeUnit   time.Duration
+	transport transporter
+	timeUnit  time.Duration
 }
 
 func newExporter(transport transporter, timeUnit time.Duration) *exporter {
 	return &exporter{
-		transport:  transport,
-		timeUnit:   timeUnit,
+		transport: transport,
+		timeUnit:  timeUnit,
 	}
 }
 
 // StartExporter starts a new exporter on the current go-routine and will
 // never exit.
-func StartExporter(registry metrics.Registry, opts ...ExporterOption) {
+func StartExporter(registry metrics.Registry, opts ...ExporterOption) func() {
 	options := &Options{
 		Frequency:     time.Minute,
 		InstanceIndex: getInstanceIndex(),
@@ -72,24 +72,30 @@ func StartExporter(registry metrics.Registry, opts ...ExporterOption) {
 		o(options)
 	}
 
-	StartExporterWithOptions(registry, options)
+	return StartExporterWithOptions(registry, options)
 }
 
 // StartExporterWithOptions starts a new exporter with provided options on
 // the current go-routine and will never exit.
-func StartExporterWithOptions(registry metrics.Registry, options *Options) {
+func StartExporterWithOptions(registry metrics.Registry, options *Options) func() {
 	options.fillDefaults()
 
 	if options.Url == "" {
 		log.Println("Could not export metrics to PCF: no URL provided")
-		return
+		return func() {}
 	}
 
 	client := createClient(options)
 	transport := newHttpTransporter(client, options)
 	exporter := newExporter(transport, options.TimeUnit)
 
-	exporter.exportMetricsAtFrequency(registry, options.Frequency)
+	stopChan := make(chan struct{})
+
+	go exporter.exportMetricsAtFrequency(registry, options.Frequency, stopChan)
+
+	return func() {
+		close(stopChan)
+	}
 }
 
 func createClient(options *Options) *http.Client {
@@ -100,15 +106,19 @@ func createClient(options *Options) *http.Client {
 	return client
 }
 
-func (e *exporter) exportMetricsAtFrequency(registry metrics.Registry, frequency time.Duration) {
+func (e *exporter) exportMetricsAtFrequency(registry metrics.Registry, frequency time.Duration, stopChan chan struct{}) {
 	timer := time.NewTimer(frequency)
 	for {
-		<-timer.C
-		timer.Reset(frequency)
+		select {
+		case <-stopChan:
+			return
+		case <-timer.C:
+			timer.Reset(frequency)
 
-		err := e.sendMetricsBatch(registry)
-		if err != nil {
-			log.Printf("Could not export metrics to PCF: %s", err.Error())
+			err := e.sendMetricsBatch(registry)
+			if err != nil {
+				log.Printf("Could not export metrics to PCF: %s", err.Error())
+			}
 		}
 	}
 }

@@ -61,6 +61,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 		fakeMetricsForwarderServer *httptest.Server
 		requestBodies              chan []byte
 		requests                   chan *http.Request
+		stopFunc                   func()
 	}
 
 	var setup = func(responseCode int) *testContext {
@@ -90,7 +91,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 	var setupAndStart = func(responseCode int) *testContext {
 		tc := setup(responseCode)
 
-		go pcfmetrics.StartExporter(
+		tc.stopFunc = pcfmetrics.StartExporter(
 			tc.registry,
 			pcfmetrics.WithFrequency(100*time.Millisecond),
 			pcfmetrics.WithToken("fake-token"),
@@ -101,10 +102,25 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 	}
 
 	var teardown = func(tc *testContext) {
-		//TODO stop the exporter
+		tc.stopFunc()
 		tc.fakeMetricsForwarderServer.CloseClientConnections()
 		tc.fakeMetricsForwarderServer.Close()
 	}
+
+	It("stops sending metrics when it's stop function is called", func() {
+		tc := setupAndStart(http.StatusOK)
+		defer tc.fakeMetricsForwarderServer.CloseClientConnections()
+		defer tc.fakeMetricsForwarderServer.Close()
+
+		counter := metrics.NewCounter()
+		tc.registry.Register("test-counter", counter)
+
+		Eventually(tc.requests).Should(Receive())
+		tc.stopFunc()
+
+		currentRequestCount := len(tc.requests)
+		Consistently(tc.requests, 1).Should(HaveLen(currentRequestCount))
+	})
 
 	Describe("metric format", func() {
 		It("exports metrics with the current timestamp", func() {
@@ -515,7 +531,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			tc := setup(http.StatusOK)
 			defer teardown(tc)
 
-			go pcfmetrics.StartExporter(
+			tc.stopFunc = pcfmetrics.StartExporter(
 				tc.registry,
 				pcfmetrics.WithToken("fake-token"),
 				pcfmetrics.WithURL(tc.fakeMetricsForwarderServer.URL),
@@ -534,7 +550,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			tc := setup(http.StatusOK)
 			defer teardown(tc)
 
-			go pcfmetrics.StartExporter(
+			tc.stopFunc = pcfmetrics.StartExporter(
 				tc.registry,
 				pcfmetrics.WithFrequency(100*time.Millisecond),
 				pcfmetrics.WithToken("fake-token"),
@@ -552,7 +568,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			tc := setup(http.StatusOK)
 			defer teardown(tc)
 
-			go pcfmetrics.StartExporter(
+			tc.stopFunc = pcfmetrics.StartExporter(
 				tc.registry,
 				pcfmetrics.WithFrequency(100*time.Millisecond),
 				pcfmetrics.WithToken("fake-token"),
@@ -572,7 +588,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			tc := setup(http.StatusOK)
 			defer teardown(tc)
 
-			go pcfmetrics.StartExporter(
+			tc.stopFunc = pcfmetrics.StartExporter(
 				tc.registry,
 				pcfmetrics.WithFrequency(100*time.Millisecond),
 				pcfmetrics.WithToken("fake-token"),
@@ -603,7 +619,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			tc := setup(http.StatusOK)
 			defer teardown(tc)
 
-			go pcfmetrics.StartExporter(
+			tc.stopFunc = pcfmetrics.StartExporter(
 				tc.registry,
 				pcfmetrics.WithFrequency(100*time.Millisecond),
 				pcfmetrics.WithToken("fake-token"),
@@ -617,9 +633,9 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 
 			app := wrapMetrics([]*metric{
 				{
-					Name:  "test-counter",
-					Type:  "counter",
-					Unit:  "",
+					Name: "test-counter",
+					Type: "counter",
+					Unit: "",
 				},
 			})
 
@@ -636,7 +652,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			tc := setup(http.StatusOK)
 			defer teardown(tc)
 
-			go pcfmetrics.StartExporter(
+			tc.stopFunc = pcfmetrics.StartExporter(
 				tc.registry,
 				pcfmetrics.WithFrequency(100*time.Millisecond),
 				pcfmetrics.WithToken("fake-token"),
@@ -650,9 +666,9 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 
 			app := wrapMetrics([]*metric{
 				{
-					Name:  "test-counter",
-					Type:  "counter",
-					Unit:  "",
+					Name: "test-counter",
+					Type: "counter",
+					Unit: "",
 				},
 			})
 
@@ -669,7 +685,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			tc := setup(http.StatusOK)
 			defer teardown(tc)
 
-			go pcfmetrics.StartExporter(
+			tc.stopFunc = pcfmetrics.StartExporter(
 				tc.registry,
 				pcfmetrics.WithFrequency(100*time.Millisecond),
 				pcfmetrics.WithToken("fake-token"),
@@ -705,7 +721,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			tc := setup(http.StatusOK)
 			defer teardown(tc)
 
-			go pcfmetrics.StartExporter(
+			tc.stopFunc = pcfmetrics.StartExporter(
 				tc.registry,
 				pcfmetrics.WithToken("fake-token"),
 				pcfmetrics.WithURL(tc.fakeMetricsForwarderServer.URL),
@@ -736,7 +752,7 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 
 			os.Setenv("VCAP_SERVICES", vcapJson)
 
-			go pcfmetrics.StartExporter(
+			tc.stopFunc = pcfmetrics.StartExporter(
 				tc.registry,
 				pcfmetrics.WithAppGuid("fake-app-guid"),
 				pcfmetrics.WithFrequency(100*time.Millisecond),
