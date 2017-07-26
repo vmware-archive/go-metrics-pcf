@@ -117,19 +117,23 @@ func (e *exporter) assembleDataPoints(registry metrics.Registry) []*dataPoint {
 	registry.Each(func(name string, metric interface{}) {
 		switch m := metric.(type) {
 		case metrics.Counter:
-			data = append(data, convertCounter(m.Snapshot(), name, currentTime))
+			data = append(data, convertCounter(m.Snapshot(), name))
 		case metrics.Gauge:
-			data = append(data, convertGauge(m.Snapshot(), name, currentTime))
+			data = append(data, convertGauge(m.Snapshot(), name))
 		case metrics.GaugeFloat64:
-			data = append(data, convertGaugeFloat64(m.Snapshot(), name, currentTime))
+			data = append(data, convertGaugeFloat64(m.Snapshot(), name))
 		case metrics.Meter:
-			data = append(data, convertMeter(m.Snapshot(), name, currentTime)...)
+			data = append(data, convertMeter(m.Snapshot(), name)...)
 		case metrics.Timer:
-			data = append(data, convertTimer(m.Snapshot(), name, currentTime, e.timeUnit)...)
+			data = append(data, convertTimer(m.Snapshot(), name, e.timeUnit)...)
 		case metrics.Histogram:
-			data = append(data, convertHistogram(m.Snapshot(), name, currentTime)...)
+			data = append(data, convertHistogram(m.Snapshot(), name)...)
 		}
 	})
+
+	for _, dataPoint := range data {
+		dataPoint.Timestamp = currentTime
+	}
 
 	return data
 }
