@@ -35,7 +35,7 @@ func (o *Options) fillDefaults() {
 func (o *Options) fillCredentialDefaults() {
 	creds, err := getCredentials(o.ServiceName)
 	if err != nil {
-		log.Printf("Could not get apiToken: %s", err.Error())
+		log.Printf("Could not get metrics forwarder credentials: %s", err.Error())
 		return
 	}
 
@@ -78,9 +78,9 @@ func WithInstanceId(guid string) ExporterOption {
 
 // WithInstanceIndex sets the instance index. The default is read from the
 // environment variable INSTANCE_INDEX.
-func WithInstanceIndex(id string) ExporterOption {
+func WithInstanceIndex(index string) ExporterOption {
 	return func(o *Options) {
-		o.InstanceId = id
+		o.InstanceIndex = index
 	}
 }
 

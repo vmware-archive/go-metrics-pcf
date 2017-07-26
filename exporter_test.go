@@ -28,6 +28,8 @@ import (
 	"net/http"
 	"io/ioutil"
 	"encoding/json"
+	"os"
+	"fmt"
 )
 
 type metricForwarderPayload struct {
@@ -72,9 +74,8 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 			http.HandlerFunc(
 				func(w http.ResponseWriter, req *http.Request) {
 					body, err := ioutil.ReadAll(req.Body)
-					if err != nil {
-						panic(err)
-					}
+					Expect(err).ToNot(HaveOccurred())
+
 					tc.requestBodies <- body
 					tc.requests <- req
 
@@ -101,6 +102,8 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 
 	var teardown = func(tc *testContext) {
 		//TODO stop the exporter
+		tc.fakeMetricsForwarderServer.CloseClientConnections()
+		tc.fakeMetricsForwarderServer.Close()
 	}
 
 	Describe("metric format", func() {
@@ -527,20 +530,235 @@ var _ = Describe("`go-metrics` exporter for PCF Metrics", func() {
 	})
 
 	Describe("setting options", func() {
-		//TODO test option functions
+		It("uses the correct url when using WithURL", func() {
+			tc := setup(http.StatusOK)
+			defer teardown(tc)
+
+			go pcfmetrics.StartExporter(
+				tc.registry,
+				pcfmetrics.WithFrequency(100*time.Millisecond),
+				pcfmetrics.WithToken("fake-token"),
+				pcfmetrics.WithURL(tc.fakeMetricsForwarderServer.URL),
+				pcfmetrics.WithAppGuid("fake-app-guid"),
+			)
+
+			counter := metrics.NewCounter()
+			tc.registry.Register("test-counter", counter)
+
+			Eventually(tc.requests).Should(Receive())
+		})
+
+		It("uses the correct access token when using WithToken", func() {
+			tc := setup(http.StatusOK)
+			defer teardown(tc)
+
+			go pcfmetrics.StartExporter(
+				tc.registry,
+				pcfmetrics.WithFrequency(100*time.Millisecond),
+				pcfmetrics.WithToken("fake-token"),
+				pcfmetrics.WithURL(tc.fakeMetricsForwarderServer.URL),
+				pcfmetrics.WithAppGuid("fake-app-guid"),
+			)
+
+			counter := metrics.NewCounter()
+			tc.registry.Register("test-counter", counter)
+
+			var req *http.Request
+			Eventually(tc.requests).Should(Receive(&req))
+			Expect(req.Header).To(HaveKeyWithValue("Authorization", []string{"fake-token"}))
+		})
+
+		It("sends the correct app guid when using WithAppGuid", func() {
+			tc := setup(http.StatusOK)
+			defer teardown(tc)
+
+			go pcfmetrics.StartExporter(
+				tc.registry,
+				pcfmetrics.WithFrequency(100*time.Millisecond),
+				pcfmetrics.WithToken("fake-token"),
+				pcfmetrics.WithURL(tc.fakeMetricsForwarderServer.URL),
+				pcfmetrics.WithAppGuid("fake-app-guid"),
+			)
+
+			counter := metrics.NewCounter()
+			tc.registry.Register("test-counter", counter)
+
+			app := wrapMetrics([]*metric{
+				{
+					Name: "test-counter",
+					Type: "counter",
+					Unit: "",
+				},
+			})
+
+			expectedJson, err := json.Marshal(app)
+			Expect(err).ToNot(HaveOccurred())
+
+			var payload []byte
+			Eventually(tc.requestBodies).Should(Receive(&payload))
+			Expect(string(payload)).To(ContainUnorderedJSON(expectedJson))
+		})
+
+		It("sends the correct instance id when using WithInstanceId", func() {
+			tc := setup(http.StatusOK)
+			defer teardown(tc)
+
+			go pcfmetrics.StartExporter(
+				tc.registry,
+				pcfmetrics.WithFrequency(100*time.Millisecond),
+				pcfmetrics.WithToken("fake-token"),
+				pcfmetrics.WithURL(tc.fakeMetricsForwarderServer.URL),
+				pcfmetrics.WithAppGuid("fake-app-guid"),
+				pcfmetrics.WithInstanceId("fake-instance-id"),
+			)
+
+			counter := metrics.NewCounter()
+			tc.registry.Register("test-counter", counter)
+
+			app := wrapMetrics([]*metric{
+				{
+					Name:  "test-counter",
+					Type:  "counter",
+					Unit:  "",
+				},
+			})
+
+			app.Applications[0].Instances[0].Id = "fake-instance-id"
+			expectedJson, err := json.Marshal(app)
+			Expect(err).ToNot(HaveOccurred())
+
+			var payload []byte
+			Eventually(tc.requestBodies).Should(Receive(&payload))
+			Expect(string(payload)).To(ContainUnorderedJSON(expectedJson))
+		})
+
+		It("sends the correct instance index when using WithInstanceIndex", func() {
+			tc := setup(http.StatusOK)
+			defer teardown(tc)
+
+			go pcfmetrics.StartExporter(
+				tc.registry,
+				pcfmetrics.WithFrequency(100*time.Millisecond),
+				pcfmetrics.WithToken("fake-token"),
+				pcfmetrics.WithURL(tc.fakeMetricsForwarderServer.URL),
+				pcfmetrics.WithAppGuid("fake-app-guid"),
+				pcfmetrics.WithInstanceIndex("fake-instance-index"),
+			)
+
+			counter := metrics.NewCounter()
+			tc.registry.Register("test-counter", counter)
+
+			app := wrapMetrics([]*metric{
+				{
+					Name:  "test-counter",
+					Type:  "counter",
+					Unit:  "",
+				},
+			})
+
+			app.Applications[0].Instances[0].Index = "fake-instance-index"
+			expectedJson, err := json.Marshal(app)
+			Expect(err).ToNot(HaveOccurred())
+
+			var payload []byte
+			Eventually(tc.requestBodies).Should(Receive(&payload))
+			Expect(string(payload)).To(ContainUnorderedJSON(expectedJson))
+		})
+
+		It("uses the correct time unit when using WithTimeUnit", func() {
+			tc := setup(http.StatusOK)
+			defer teardown(tc)
+
+			go pcfmetrics.StartExporter(
+				tc.registry,
+				pcfmetrics.WithFrequency(100*time.Millisecond),
+				pcfmetrics.WithToken("fake-token"),
+				pcfmetrics.WithURL(tc.fakeMetricsForwarderServer.URL),
+				pcfmetrics.WithAppGuid("fake-app-guid"),
+				pcfmetrics.WithTimeUnit(time.Second),
+			)
+
+			fakeTimer := new(metricFakes.FakeTimer)
+			fakeTimer.SnapshotReturns(fakeTimer)
+			fakeTimer.MeanReturns(5 * float64(time.Millisecond))
+
+			tc.registry.Register("test-timer", fakeTimer)
+
+			app := wrapMetrics([]*metric{
+				{
+					Name:  "test-timer.duration.mean",
+					Type:  "gauge",
+					Value: .005,
+					Unit:  "seconds",
+				},
+			})
+
+			expectedJson, err := json.Marshal(app)
+			Expect(err).ToNot(HaveOccurred())
+
+			var payload []byte
+			Eventually(tc.requestBodies).Should(Receive(&payload))
+			Expect(string(payload)).To(ContainUnorderedJSON(expectedJson))
+		})
+
+		It("sends metrics at the correct frequency when using WithFrequency", func() {
+			tc := setup(http.StatusOK)
+			defer teardown(tc)
+
+			go pcfmetrics.StartExporter(
+				tc.registry,
+				pcfmetrics.WithToken("fake-token"),
+				pcfmetrics.WithURL(tc.fakeMetricsForwarderServer.URL),
+				pcfmetrics.WithAppGuid("fake-app-guid"),
+				pcfmetrics.WithFrequency(100*time.Millisecond),
+			)
+
+			counter := metrics.NewCounter()
+			tc.registry.Register("test-counter", counter)
+
+			Eventually(tc.requestBodies, 1).Should(HaveLen(5))
+		})
+
+		It("gets credentials from the correct service when using WithServiceName", func() {
+			tc := setup(http.StatusOK)
+			defer teardown(tc)
+
+			vcapJson := fmt.Sprintf(`{
+			  "fake-service-name": [
+			   {
+				"credentials": {
+				 "access_key": "fake-access-key",
+				 "endpoint": "%s"
+				}
+			   }
+			  ]
+			}`, tc.fakeMetricsForwarderServer.URL)
+
+			os.Setenv("VCAP_SERVICES", vcapJson)
+
+			go pcfmetrics.StartExporter(
+				tc.registry,
+				pcfmetrics.WithAppGuid("fake-app-guid"),
+				pcfmetrics.WithFrequency(100*time.Millisecond),
+				pcfmetrics.WithServiceName("fake-service-name"),
+			)
+
+			counter := metrics.NewCounter()
+			tc.registry.Register("test-counter", counter)
+
+			Eventually(tc.requestBodies, 1).Should(HaveLen(5))
+		})
 	})
 })
 
 func metricsToJsonString(metrics []*metric) string {
 	bytes, err := json.Marshal(wrapMetrics(metrics))
-	if err != nil {
-		panic(err)
-	}
+	Expect(err).ToNot(HaveOccurred())
 
 	return string(bytes)
 }
 
-func wrapMetrics(metrics []*metric) interface{} {
+func wrapMetrics(metrics []*metric) metricForwarderPayload {
 	instances := []*instance{
 		{
 			Metrics: metrics,

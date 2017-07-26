@@ -21,8 +21,8 @@ import (
 )
 
 type credentials struct {
-	AccessToken string
-	Url string
+	AccessToken string `json:"access_key"`
+	Url string `json:"endpoint"`
 }
 
 func getInstanceIndex() string {
