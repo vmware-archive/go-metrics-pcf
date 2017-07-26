@@ -21,13 +21,6 @@ import (
 	"time"
 )
 
-//go:generate Counterfeiter github.com/rcrowley/go-metrics.Counter
-//go:generate Counterfeiter github.com/rcrowley/go-metrics.Gauge
-//go:generate Counterfeiter github.com/rcrowley/go-metrics.GaugeFloat64
-//go:generate Counterfeiter github.com/rcrowley/go-metrics.Meter
-//go:generate Counterfeiter github.com/rcrowley/go-metrics.Histogram
-//go:generate Counterfeiter github.com/rcrowley/go-metrics.Timer
-
 type counter interface {
 	Count() int64
 }

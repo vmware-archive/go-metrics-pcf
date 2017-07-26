@@ -19,39 +19,43 @@ type Options struct {
 }
 
 func (o *Options) fillDefaults() {
-	if o.Token == "" {
-		apiToken, err := getToken(o.ServiceName)
-		if err != nil {
-			log.Printf("Could not get apiToken: %s", err.Error())
-			return
-		}
-
-		o.Token = apiToken
-	}
-
-	if o.Url == "" {
-		apiUrl, err := getUrl(o.ServiceName)
-		if err != nil {
-			log.Printf("Could not get Url: %s", err.Error())
-			return
-		}
-
-		o.Url = apiUrl
+	if o.Token == "" || o.Url == "" {
+		o.fillCredentialDefaults()
 	}
 
 	if o.AppGuid == "" {
-		appGuid, err := getAppGuid()
-		if err != nil {
-			log.Printf("Could not get app guid: %s", err.Error())
-			return
-		}
-
-		o.AppGuid = appGuid
+		o.fillAppGuidDefault()
 	}
 
 	if o.Frequency == time.Duration(0) {
 		o.Frequency = time.Minute
 	}
+}
+
+func (o *Options) fillCredentialDefaults() {
+	creds, err := getCredentials(o.ServiceName)
+	if err != nil {
+		log.Printf("Could not get apiToken: %s", err.Error())
+		return
+	}
+
+	if o.Token == "" {
+		o.Token = creds.AccessToken
+	}
+
+	if o.Url == "" {
+		o.Url = creds.Url
+	}
+}
+
+func (o *Options) fillAppGuidDefault() {
+	appGuid, err := getAppGuid()
+	if err != nil {
+		log.Printf("Could not get app guid: %s", err.Error())
+		return
+	}
+
+	o.AppGuid = appGuid
 }
 
 // ExporterOption is used to configure an exporter.

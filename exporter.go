@@ -24,6 +24,13 @@ import (
 	"github.com/rcrowley/go-metrics"
 )
 
+//go:generate Counterfeiter github.com/rcrowley/go-metrics.Counter
+//go:generate Counterfeiter github.com/rcrowley/go-metrics.Gauge
+//go:generate Counterfeiter github.com/rcrowley/go-metrics.GaugeFloat64
+//go:generate Counterfeiter github.com/rcrowley/go-metrics.Meter
+//go:generate Counterfeiter github.com/rcrowley/go-metrics.Histogram
+//go:generate Counterfeiter github.com/rcrowley/go-metrics.Timer
+
 const defaultCfMetricsServiceName = "metrics-forwarder"
 
 type dataPoint struct {
@@ -35,11 +42,19 @@ type dataPoint struct {
 }
 
 type transporter interface {
-	send([]*dataPoint) error
+	sendMetrics([]*dataPoint) error
 }
 
-type timeHelper interface {
-	currentTimeInMillis() int64
+type exporter struct {
+	transport  transporter
+	timeUnit   time.Duration
+}
+
+func newExporter(transport transporter, timeUnit time.Duration) *exporter {
+	return &exporter{
+		transport:  transport,
+		timeUnit:   timeUnit,
+	}
 }
 
 // StartExporter starts a new exporter on the current go-routine and will
@@ -70,49 +85,43 @@ func StartExporterWithOptions(registry metrics.Registry, options *Options) {
 		return
 	}
 
+	client := createClient(options)
+	transport := newHttpTransporter(client, options)
+	exporter := newExporter(transport, options.TimeUnit)
+
+	exporter.exportMetricsAtFrequency(registry, options.Frequency)
+}
+
+func createClient(options *Options) *http.Client {
 	httpTransport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: options.SkipSSLVerification},
 	}
 	client := &http.Client{Transport: httpTransport}
+	return client
+}
 
-	timer := time.NewTimer(options.Frequency)
-	transport := newHttpTransporter(client, options)
-	exporter := newExporter(transport, &realTimeHelper{}, options.TimeUnit)
-
+func (e *exporter) exportMetricsAtFrequency(registry metrics.Registry, frequency time.Duration) {
+	timer := time.NewTimer(frequency)
 	for {
 		<-timer.C
-		timer.Reset(options.Frequency)
+		timer.Reset(frequency)
 
-		err := exporter.exportMetrics(registry)
+		err := e.sendMetricsBatch(registry)
 		if err != nil {
 			log.Printf("Could not export metrics to PCF: %s", err.Error())
 		}
 	}
 }
 
-type exporter struct {
-	transport  transporter
-	timeHelper timeHelper
-	timeUnit   time.Duration
-}
-
-func newExporter(transport transporter, timeHelper timeHelper, timeUnit time.Duration) *exporter {
-	return &exporter{
-		transport:  transport,
-		timeHelper: timeHelper,
-		timeUnit:   timeUnit,
-	}
-}
-
-func (e *exporter) exportMetrics(registry metrics.Registry) error {
+func (e *exporter) sendMetricsBatch(registry metrics.Registry) error {
 	dataPoints := e.assembleDataPoints(registry)
 
-	return e.transport.send(dataPoints)
+	return e.transport.sendMetrics(dataPoints)
 }
 
 func (e *exporter) assembleDataPoints(registry metrics.Registry) []*dataPoint {
-	data := make([]*dataPoint, 0)
-	currentTime := e.timeHelper.currentTimeInMillis()
+	var data []*dataPoint
+	currentTime := currentTimeInMillis()
 
 	registry.Each(func(name string, metric interface{}) {
 		switch m := metric.(type) {
@@ -136,4 +145,8 @@ func (e *exporter) assembleDataPoints(registry metrics.Registry) []*dataPoint {
 	}
 
 	return data
+}
+
+func currentTimeInMillis() int64 {
+	return time.Now().UnixNano() / int64(time.Millisecond)
 }

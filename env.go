@@ -16,9 +16,14 @@ package pcfmetrics
 
 import (
 	"encoding/json"
-	"errors"
 	"os"
+	"fmt"
 )
+
+type credentials struct {
+	AccessToken string
+	Url string
+}
 
 func getInstanceIndex() string {
 	return os.Getenv("INSTANCE_INDEX")
@@ -44,41 +49,40 @@ func getAppGuid() (string, error) {
 	return appGuid, nil
 }
 
-func getToken(serviceName string) (string, error) {
-	token, _, err := getCredentials(serviceName)
-	return token, err
-}
-
-func getUrl(serviceName string) (string, error) {
-	_, url, err := getCredentials(serviceName)
-	return url, err
-}
-
-func getCredentials(serviceName string) (accessToken, url string, err error) {
+func getCredentials(serviceName string) (serviceCredentials *credentials, err error) {
 	var allServices map[string]*json.RawMessage
 	err = json.Unmarshal([]byte(os.Getenv("VCAP_SERVICES")), &allServices)
 	if err != nil {
-		return "", "", err
+		return nil, err
 	}
 
-	for k, v := range allServices {
-		if k == serviceName {
-			var serviceValues []map[string]*json.RawMessage
-			err = json.Unmarshal(*v, &serviceValues)
-			if err != nil {
-				return "", "", err
-			}
-
-			var creds map[string]string
-			err = json.Unmarshal(*serviceValues[0]["credentials"], &creds)
-			if err != nil {
-				return "", "", err
-
-			}
-
-			return creds["access_key"], creds["endpoint"], nil
-		}
+	forwarderService, err := getService(serviceName)
+	if err != nil {
+		return nil, err
 	}
 
-	return "", "", errors.New("custom metrics service not found")
+	var serviceValues []map[string]*json.RawMessage
+	err = json.Unmarshal(*forwarderService, &serviceValues)
+	if err != nil {
+		return nil, err
+	}
+
+	var creds credentials
+	err = json.Unmarshal(*serviceValues[0]["credentials"], &creds)
+	return &creds, err
+}
+
+func getService(serviceName string) (service *json.RawMessage, err error) {
+	var allServices map[string]*json.RawMessage
+	err = json.Unmarshal([]byte(os.Getenv("VCAP_SERVICES")), &allServices)
+	if err != nil {
+		return nil, err
+	}
+
+	service, ok := allServices[serviceName]
+	if !ok {
+		return nil, fmt.Errorf("could not find service with name: %s", serviceName)
+	}
+
+	return service, nil
 }

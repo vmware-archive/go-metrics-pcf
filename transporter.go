@@ -26,45 +26,22 @@ type HttpClient interface {
 }
 
 type httpTransporter struct {
-	client HttpClient
+	client  HttpClient
 	options *Options
 }
 
 func newHttpTransporter(client HttpClient, options *Options) *httpTransporter {
 	return &httpTransporter{
-		client: client,
+		client:  client,
 		options: options,
 	}
 }
 
-func (h *httpTransporter) send(points []*dataPoint) error {
-	payload := metricForwarderPayload{
-		Applications: []metricForwarderApplication{
-			{
-				Id: h.options.AppGuid,
-				Instances: []metricForwarderInstance{
-					{
-						Id: h.options.InstanceId,
-						Index: h.options.InstanceIndex,
-						Metrics: points,
-					},
-				},
-			},
-		},
-	}
-
-	body, err := json.Marshal(&payload)
+func (h *httpTransporter) sendMetrics(points []*dataPoint) error {
+	req, err := h.createRequest(points)
 	if err != nil {
 		return err
 	}
-
-	req, err := http.NewRequest(http.MethodPost, h.options.Url, bytes.NewBuffer(body))
-	if err != nil {
-		return err
-	}
-
-	req.Header.Add("Authorization", h.options.Token)
-	req.Header.Add("Content-Type", "application/json")
 
 	res, err := h.client.Do(req)
 	if err != nil {
@@ -78,17 +55,27 @@ func (h *httpTransporter) send(points []*dataPoint) error {
 	return nil
 }
 
-type metricForwarderPayload struct {
-	Applications []metricForwarderApplication `json:"applications"`
+func (h *httpTransporter) createRequest(points []*dataPoint) (req *http.Request, err error) {
+	body, err := h.createBytesBufferPayload(points)
+
+	req, err = http.NewRequest(http.MethodPost, h.options.Url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", h.options.Token)
+	req.Header.Add("Content-Type", "application/json")
+
+	return req, err
 }
 
-type metricForwarderApplication struct {
-	Id string `json:"id"`
-	Instances []metricForwarderInstance `json:"instances"`
-}
+func (h *httpTransporter) createBytesBufferPayload(points []*dataPoint) (body *bytes.Buffer, err error) {
+	payload := newMetricForwarderPayload(points, h.options)
 
-type metricForwarderInstance struct {
-	Id string `json:"id"`
-	Index string `json:"index"`
-	Metrics []*dataPoint `json:"metrics"`
+	jsonPayload, err := json.Marshal(&payload)
+	if err != nil {
+		return nil, err
+	}
+
+	return bytes.NewBuffer(jsonPayload), nil
 }
