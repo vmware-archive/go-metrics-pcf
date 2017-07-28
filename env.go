@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"os"
 	"fmt"
+	"errors"
 )
 
 type credentials struct {
@@ -40,8 +41,13 @@ func getAppGuid() (string, error) {
 		return "", err
 	}
 
+	appIdJson, ok := vcapApplication["application_id"]
+	if !ok {
+		return "", errors.New("Could not find application id")
+	}
+
 	var appGuid string
-	err = json.Unmarshal(*vcapApplication["application_id"], &appGuid)
+	err = json.Unmarshal(*appIdJson, &appGuid)
 	if err != nil {
 		return "", err
 	}
