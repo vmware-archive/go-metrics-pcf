@@ -135,10 +135,13 @@ type FakeTimer struct {
 	stdDevReturnsOnCall map[int]struct {
 		result1 float64
 	}
-	SumStub        func() int64
-	sumMutex       sync.RWMutex
-	sumArgsForCall []struct{}
-	sumReturns     struct {
+	StopStub        func()
+	stopMutex       sync.RWMutex
+	stopArgsForCall []struct{}
+	SumStub         func() int64
+	sumMutex        sync.RWMutex
+	sumArgsForCall  []struct{}
+	sumReturns      struct {
 		result1 int64
 	}
 	sumReturnsOnCall map[int]struct {
@@ -673,6 +676,22 @@ func (fake *FakeTimer) StdDevReturnsOnCall(i int, result1 float64) {
 	}{result1}
 }
 
+func (fake *FakeTimer) Stop() {
+	fake.stopMutex.Lock()
+	fake.stopArgsForCall = append(fake.stopArgsForCall, struct{}{})
+	fake.recordInvocation("Stop", []interface{}{})
+	fake.stopMutex.Unlock()
+	if fake.StopStub != nil {
+		fake.StopStub()
+	}
+}
+
+func (fake *FakeTimer) StopCallCount() int {
+	fake.stopMutex.RLock()
+	defer fake.stopMutex.RUnlock()
+	return len(fake.stopArgsForCall)
+}
+
 func (fake *FakeTimer) Sum() int64 {
 	fake.sumMutex.Lock()
 	ret, specificReturn := fake.sumReturnsOnCall[len(fake.sumArgsForCall)]
@@ -852,6 +871,8 @@ func (fake *FakeTimer) Invocations() map[string][][]interface{} {
 	defer fake.snapshotMutex.RUnlock()
 	fake.stdDevMutex.RLock()
 	defer fake.stdDevMutex.RUnlock()
+	fake.stopMutex.RLock()
+	defer fake.stopMutex.RUnlock()
 	fake.sumMutex.RLock()
 	defer fake.sumMutex.RUnlock()
 	fake.timeMutex.RLock()

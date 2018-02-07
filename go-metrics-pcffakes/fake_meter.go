@@ -81,6 +81,9 @@ type FakeMeter struct {
 	snapshotReturnsOnCall map[int]struct {
 		result1 metrics.Meter
 	}
+	StopStub         func()
+	stopMutex        sync.RWMutex
+	stopArgsForCall  []struct{}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
 }
@@ -349,6 +352,22 @@ func (fake *FakeMeter) SnapshotReturnsOnCall(i int, result1 metrics.Meter) {
 	}{result1}
 }
 
+func (fake *FakeMeter) Stop() {
+	fake.stopMutex.Lock()
+	fake.stopArgsForCall = append(fake.stopArgsForCall, struct{}{})
+	fake.recordInvocation("Stop", []interface{}{})
+	fake.stopMutex.Unlock()
+	if fake.StopStub != nil {
+		fake.StopStub()
+	}
+}
+
+func (fake *FakeMeter) StopCallCount() int {
+	fake.stopMutex.RLock()
+	defer fake.stopMutex.RUnlock()
+	return len(fake.stopArgsForCall)
+}
+
 func (fake *FakeMeter) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
@@ -366,6 +385,8 @@ func (fake *FakeMeter) Invocations() map[string][][]interface{} {
 	defer fake.rateMeanMutex.RUnlock()
 	fake.snapshotMutex.RLock()
 	defer fake.snapshotMutex.RUnlock()
+	fake.stopMutex.RLock()
+	defer fake.stopMutex.RUnlock()
 	return fake.invocations
 }
 
